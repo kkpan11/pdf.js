@@ -546,17 +546,19 @@ class CFFParser {
         stackSize++;
       } else if (value === 19 || value === 20) {
         state.hints += stackSize >> 1;
+        if (state.hints === 0) {
+          // Not a valid value (see bug 1529502): just remove it.
+          data.copyWithin(j - 1, j, -1);
+          j -= 1;
+          length -= 1;
+          continue;
+        }
         // skipping right amount of hints flag data
         j += (state.hints + 7) >> 3;
         stackSize %= 2;
         validationCommand = CharstringValidationData[value];
       } else if (value === 10 || value === 29) {
-        let subrsIndex;
-        if (value === 10) {
-          subrsIndex = localSubrIndex;
-        } else {
-          subrsIndex = globalSubrIndex;
-        }
+        const subrsIndex = value === 10 ? localSubrIndex : globalSubrIndex;
         if (!subrsIndex) {
           validationCommand = CharstringValidationData[value];
           warn("Missing subrsIndex for " + validationCommand.id);
@@ -1383,11 +1385,12 @@ class CFFCompiler {
       data: [],
       length: 0,
       add(data) {
-        if (data.length <= 65536) {
-          // The number of arguments is limited, hence we just take 65536 as
-          // limit because it isn't too high or too low.
+        try {
+          // It's possible to exceed the call stack maximum size when trying
+          // to push too much elements.
+          // In case of failure, we fallback to the `concat` method.
           this.data.push(...data);
-        } else {
+        } catch {
           this.data = this.data.concat(data);
         }
         this.length = this.data.length;
@@ -1428,7 +1431,7 @@ class CFFCompiler {
     }
 
     const xuid = cff.topDict.getByName("XUID");
-    if (xuid && xuid.length > 16) {
+    if (xuid?.length > 16) {
       // Length of XUID array must not be greater than 16 (issue #12399).
       cff.topDict.removeByName("XUID");
     }
