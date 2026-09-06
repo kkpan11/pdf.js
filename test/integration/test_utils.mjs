@@ -13,10 +13,24 @@
  * limitations under the License.
  */
 
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { mergeCoverageIntoGlobal } from "../coverage_utils.js";
 import os from "os";
 
 const isMac = os.platform() === "darwin";
+
+/**
+ * Decode PNG data into RGBA pixels.
+ * @param {Uint8Array} data
+ * @returns {Promise<{width: number, height: number, data: Uint8ClampedArray}>}
+ */
+async function decodePNG(data) {
+  const image = await loadImage(data);
+  const { width, height } = image;
+  const ctx = createCanvas(width, height).getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  return { width, height, data: ctx.getImageData(0, 0, width, height).data };
+}
 
 function loadAndWait(filename, selector, zoom, setups, options, viewport) {
   return Promise.all(
@@ -1213,6 +1227,7 @@ export {
   countStorageEntries,
   createPromise,
   createPromiseWithArgs,
+  decodePNG,
   dragAndDrop,
   firstPageOnTop,
   FSI,

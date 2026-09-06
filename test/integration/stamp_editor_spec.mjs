@@ -21,6 +21,7 @@ import {
   closePages,
   copy,
   copyToClipboard,
+  decodePNG,
   dragAndDrop,
   getAnnotationSelector,
   getEditorDimensions,
@@ -52,7 +53,6 @@ import {
 } from "./test_utils.mjs";
 import fs from "fs";
 import path from "path";
-import { PNG } from "pngjs";
 
 const __dirname = import.meta.dirname;
 
@@ -1406,7 +1406,7 @@ describe("Stamp Editor", () => {
           await page.waitForSelector("#secondaryToolbar", { visible: true });
           const secondary = await page.$("#secondaryToolbar");
           const png = await secondary.screenshot({ type: "png" });
-          const secondaryImage = PNG.sync.read(Buffer.from(png));
+          const secondaryImage = await decodePNG(png);
           const buffer = new Uint32Array(secondaryImage.data.buffer);
           expect(buffer.every(x => x === 0xff0000ff))
             .withContext(`In ${browserName}`)

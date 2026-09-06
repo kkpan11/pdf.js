@@ -17,6 +17,7 @@ import {
   awaitPromise,
   closePages,
   createPromise,
+  decodePNG,
   getRect,
   getSpanRectFromText,
   loadAndWait,
@@ -29,7 +30,6 @@ import {
   waitForPageRendered,
 } from "./test_utils.mjs";
 import path from "path";
-import { PNG } from "pngjs";
 
 const __dirname = import.meta.dirname;
 
@@ -479,7 +479,7 @@ describe("PDF viewer", () => {
 
             const element = await page.$(`.page[data-page-number="1"]`);
             const png = await element.screenshot({ type: "png" });
-            const pageImage = PNG.sync.read(Buffer.from(png));
+            const pageImage = await decodePNG(png);
             let buffer = new Uint32Array(pageImage.data.buffer);
 
             // Search for the first red pixel.
