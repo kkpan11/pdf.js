@@ -314,7 +314,7 @@ class Ref {
    *       purposely *not* used to avoid creating unneeded callback functions.
    */
   static fromString(str) {
-    let ref = RefCache.get(str);
+    const ref = RefCache.get(str);
     if (ref) {
       return ref;
     }
@@ -322,12 +322,10 @@ class Ref {
     if (!m || m[1] === "0") {
       return null;
     }
-    const num = parseInt(m[1], 10),
-      gen = !m[2] ? 0 : parseInt(m[2], 10);
-    // eslint-disable-next-line no-restricted-syntax
-    ref = new Ref(str, num, gen);
-    RefCache.set(str, ref);
-    return ref;
+    return this.get(
+      /* num = */ parseInt(m[1], 10),
+      /* gen = */ !m[2] ? 0 : parseInt(m[2], 10)
+    );
   }
 
   /**
