@@ -21,6 +21,7 @@ import {
   stopEvent,
   SupportedImageMimeTypes,
 } from "pdfjs-lib";
+import { internalOpt } from "./internal_evt.js";
 
 // Default height of the added signature in page coordinates.
 const DEFAULT_HEIGHT_IN_PAGE = 40;
@@ -56,6 +57,10 @@ class SignatureManager {
 
   #errorBar;
 
+  #errorDescription;
+
+  #errorTitle;
+
   #extractedSignatureData = null;
 
   #imagePath = null;
@@ -87,6 +92,8 @@ class SignatureManager {
   #hasDescriptionChanged = false;
 
   #eventBus;
+
+  #isStorageFull = false;
 
   #l10n;
 
@@ -121,6 +128,8 @@ class SignatureManager {
       addButton,
       errorCloseButton,
       errorBar,
+      errorTitle,
+      errorDescription,
       saveCheckbox,
       saveContainer,
     },
@@ -140,6 +149,8 @@ class SignatureManager {
     this.#drawPlaceholder = drawPlaceholder;
     this.#drawThickness = drawThickness;
     this.#errorBar = errorBar;
+    this.#errorTitle = errorTitle;
+    this.#errorDescription = errorDescription;
     this.#imageSVG = imageSVG;
     this.#imagePlaceholder = imagePlaceholder;
     this.#imagePicker = imagePicker;
@@ -159,6 +170,12 @@ class SignatureManager {
 
     SignatureManager.#l10nDescription ||= Object.freeze({
       signature: "pdfjs-editor-add-signature-description-default-when-drawing",
+      errorUploadTitle: "pdfjs-editor-add-signature-image-upload-error-title",
+      errorUploadDescription:
+        "pdfjs-editor-add-signature-image-upload-error-description",
+      errorNoDataTitle: "pdfjs-editor-add-signature-image-no-data-error-title",
+      errorNoDataDescription:
+        "pdfjs-editor-add-signature-image-no-data-error-description",
     });
 
     dialog.addEventListener("close", this.#close.bind(this));
@@ -213,7 +230,11 @@ class SignatureManager {
     this.#initTabButtons(typeButton, drawButton, imageButton, panels);
     imagePicker.accept = SupportedImageMimeTypes.join(",");
 
-    eventBus._on("storedsignatureschanged", this.#signaturesChanged.bind(this));
+    eventBus.on(
+      "storedsignatureschanged",
+      this.#signaturesChanged.bind(this),
+      internalOpt
+    );
 
     overlayManager.register(dialog);
   }
@@ -322,8 +343,10 @@ class SignatureManager {
   }
 
   #disableButtons(value) {
-    this.#saveCheckbox.disabled =
-      this.#clearButton.disabled =
+    if (!value || !this.#isStorageFull) {
+      this.#saveCheckbox.disabled = !value;
+    }
+    this.#clearButton.disabled =
       this.#addButton.disabled =
       this.#description.disabled =
         !value;
@@ -392,7 +415,7 @@ class SignatureManager {
         this.#drawCurves = {
           width: drawWidth,
           height: drawHeight,
-          thickness: parseInt(this.#drawThickness.value),
+          thickness: parseInt(this.#drawThickness.value, 10),
           curves: [],
         };
         this.#disableButtons(true);
@@ -502,6 +525,18 @@ class SignatureManager {
     );
   }
 
+  #showError(type) {
+    this.#errorTitle.setAttribute(
+      "data-l10n-id",
+      SignatureManager.#l10nDescription[`error${type}Title`]
+    );
+    this.#errorDescription.setAttribute(
+      "data-l10n-id",
+      SignatureManager.#l10nDescription[`error${type}Description`]
+    );
+    this.#errorBar.hidden = false;
+  }
+
   #initImageTab(reset) {
     if (reset) {
       this.#resetTab("image");
@@ -535,7 +570,7 @@ class SignatureManager {
       async () => {
         const file = this.#imagePicker.files?.[0];
         if (!file || !SupportedImageMimeTypes.includes(file.type)) {
-          this.#errorBar.hidden = false;
+          this.#showError("Upload");
           this.#dialog.classList.toggle("waiting", false);
           return;
         }
@@ -597,18 +632,19 @@ class SignatureManager {
       console.error("SignatureManager.#extractSignature.", e);
     }
     if (!data) {
-      this.#errorBar.hidden = false;
+      this.#showError("Upload");
       this.#dialog.classList.toggle("waiting", false);
       return;
     }
 
-    const { outline } = (this.#extractedSignatureData =
+    const lineData = (this.#extractedSignatureData =
       this.#currentEditor.getFromImage(data.bitmap));
-
-    if (!outline) {
+    if (!lineData) {
+      this.#showError("NoData");
       this.#dialog.classList.toggle("waiting", false);
       return;
     }
+    const { outline } = lineData;
 
     this.#imagePlaceholder.hidden = true;
     this.#disableButtons(true);
@@ -820,7 +856,9 @@ class SignatureManager {
     const button = document.createElement("button");
     button.classList.add("altText", "editDescription");
     button.tabIndex = 0;
-    button.title = editor.description;
+    if (editor.description) {
+      button.title = editor.description;
+    }
     const span = document.createElement("span");
     button.append(span);
     span.setAttribute(
@@ -845,7 +883,8 @@ class SignatureManager {
     this.#currentEditor = editor;
     this.#uiManager.removeEditListeners();
 
-    const isStorageFull = await this.#signatureStorage.isFull();
+    const isStorageFull = (this.#isStorageFull =
+      await this.#signatureStorage.isFull());
     this.#saveContainer.classList.toggle("fullStorage", isStorageFull);
     this.#saveCheckbox.checked = !isStorageFull;
 

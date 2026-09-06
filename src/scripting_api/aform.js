@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+import { DateFormats, TimeFormats } from "../shared/scripting_utils.js";
 import { GlobalConstants } from "./constants.js";
+import { MathClamp } from "../shared/math_clamp.js";
 
 class AForm {
   constructor(document, app, util, color) {
@@ -21,28 +23,12 @@ class AForm {
     this._app = app;
     this._util = util;
     this._color = color;
-    this._dateFormats = [
-      "m/d",
-      "m/d/yy",
-      "mm/dd/yy",
-      "mm/yy",
-      "d-mmm",
-      "d-mmm-yy",
-      "dd-mmm-yy",
-      "yy-mm-dd",
-      "mmm-yy",
-      "mmmm-yy",
-      "mmm d, yyyy",
-      "mmmm d, yyyy",
-      "m/d/yy h:MM tt",
-      "m/d/yy HH:MM",
-    ];
-    this._timeFormats = ["HH:MM", "h:MM tt", "HH:MM:ss", "h:MM:ss tt"];
 
     // The e-mail address regex below originates from:
     // https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
+    // eslint-disable-next-line regexp/use-ignore-case
     this._emailRegex = new RegExp(
-      "^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+" +
+      "^[\\w.!#$%&'*+/=?^`{|}~-]+" +
         "@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?" +
         "(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
     );
@@ -52,16 +38,13 @@ class AForm {
     return event.target ? `[ ${event.target.name} ]` : "";
   }
 
-  _parseDate(cFormat, cDate, strict = false) {
+  _parseDate(cFormat, cDate) {
     let date = null;
     try {
-      date = this._util._scand(cFormat, cDate, strict);
+      date = this._util._scand(cFormat, cDate, /* strict = */ false);
     } catch {}
     if (date) {
       return date;
-    }
-    if (strict) {
-      return null;
     }
 
     date = Date.parse(cDate);
@@ -69,11 +52,9 @@ class AForm {
   }
 
   AFMergeChange(event = globalThis.event) {
-    if (event.willCommit) {
-      return event.value.toString();
-    }
-
-    return this._app._eventDispatcher.mergeChange(event);
+    return event.willCommit
+      ? event.value.toString()
+      : this._app._eventDispatcher.mergeChange(event);
   }
 
   AFParseDateEx(cString, cOrder) {
@@ -119,10 +100,7 @@ class AForm {
   }
 
   AFMakeArrayFromList(string) {
-    if (typeof string === "string") {
-      return string.split(/, ?/g);
-    }
-    return string;
+    return typeof string === "string" ? string.split(/, ?/g) : string;
   }
 
   AFNumber_Format(
@@ -158,7 +136,7 @@ class AForm {
     }
 
     // sepStyle is an integer in [0;4]
-    sepStyle = Math.min(Math.max(0, Math.floor(sepStyle)), 4);
+    sepStyle = MathClamp(Math.floor(sepStyle), 0, 4);
 
     buf.push("%,", sepStyle, ".", nDec.toString(), "f");
 
@@ -202,12 +180,12 @@ class AForm {
       // comma sep
       pattern = event.willCommit
         ? /^[+-]?(\d+(,\d*)?|,\d+)$/
-        : /^[+-]?\d*,?\d*$/;
+        : /^[+-]?\d*(?:,\d*)?$/;
     } else {
       // dot sep
       pattern = event.willCommit
         ? /^[+-]?(\d+(\.\d*)?|\.\d+)$/
-        : /^[+-]?\d*\.?\d*$/;
+        : /^[+-]?\d*(?:\.\d*)?$/;
     }
 
     if (!pattern.test(value)) {
@@ -245,7 +223,7 @@ class AForm {
     nDec = Math.floor(nDec);
 
     // sepStyle is an integer in [0;4]
-    sepStyle = Math.min(Math.max(0, Math.floor(sepStyle)), 4);
+    sepStyle = MathClamp(Math.floor(sepStyle), 0, 4);
 
     let value = this.AFMakeNumber(event.value);
     if (value === null) {
@@ -277,9 +255,7 @@ class AForm {
   }
 
   AFDate_Format(pdf) {
-    if (pdf >= 0 && pdf < this._dateFormats.length) {
-      this.AFDate_FormatEx(this._dateFormats[pdf]);
-    }
+    this.AFDate_FormatEx(DateFormats[pdf] ?? pdf);
   }
 
   AFDate_KeystrokeEx(cFormat) {
@@ -293,7 +269,7 @@ class AForm {
       return;
     }
 
-    if (this._parseDate(cFormat, value, /* strict = */ true) === null) {
+    if (this._parseDate(cFormat, value) === null) {
       const invalid = GlobalConstants.IDS_INVALID_DATE;
       const invalid2 = GlobalConstants.IDS_INVALID_DATE2;
       const err = `${invalid} ${this._mkTargetName(
@@ -305,8 +281,8 @@ class AForm {
   }
 
   AFDate_Keystroke(pdf) {
-    if (pdf >= 0 && pdf < this._dateFormats.length) {
-      this.AFDate_KeystrokeEx(this._dateFormats[pdf]);
+    if (pdf >= 0 && pdf < DateFormats.length) {
+      this.AFDate_KeystrokeEx(DateFormats[pdf]);
     }
   }
 
@@ -389,8 +365,8 @@ class AForm {
 
   AFSimple_Calculate(cFunction, cFields) {
     const actions = {
-      AVG: args => args.reduce((acc, value) => acc + value, 0) / args.length,
-      SUM: args => args.reduce((acc, value) => acc + value, 0),
+      AVG: args => Math.sumPrecise(args) / args.length,
+      SUM: args => Math.sumPrecise(args),
       PRD: args => args.reduce((acc, value) => acc * value, 1),
       MIN: args => Math.min(...args),
       MAX: args => Math.max(...args),
@@ -591,7 +567,7 @@ class AForm {
       event.rc = true;
     }
 
-    const re = /([-()]|\s)+/g;
+    const re = /[-()\s]+/g;
     value = value.replaceAll(re, "");
     for (const format of formats) {
       this.#AFSpecial_KeystrokeEx_helper(
@@ -617,9 +593,7 @@ class AForm {
   }
 
   AFTime_Format(pdf) {
-    if (pdf >= 0 && pdf < this._timeFormats.length) {
-      this.AFDate_FormatEx(this._timeFormats[pdf]);
-    }
+    this.AFDate_FormatEx(TimeFormats[pdf] ?? pdf);
   }
 
   AFTime_KeystrokeEx(cFormat) {
@@ -627,8 +601,8 @@ class AForm {
   }
 
   AFTime_Keystroke(pdf) {
-    if (pdf >= 0 && pdf < this._timeFormats.length) {
-      this.AFDate_KeystrokeEx(this._timeFormats[pdf]);
+    if (pdf >= 0 && pdf < TimeFormats.length) {
+      this.AFDate_KeystrokeEx(TimeFormats[pdf]);
     }
   }
 
@@ -637,11 +611,9 @@ class AForm {
   }
 
   AFExactMatch(rePatterns, str) {
-    if (rePatterns instanceof RegExp) {
-      return str.match(rePatterns)?.[0] === str || 0;
-    }
-
-    return rePatterns.findIndex(re => str.match(re)?.[0] === str) + 1;
+    return rePatterns instanceof RegExp
+      ? str.match(rePatterns)?.[0] === str || 0
+      : rePatterns.findIndex(re => str.match(re)?.[0] === str) + 1;
   }
 }
 

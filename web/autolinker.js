@@ -133,12 +133,18 @@ class Autolinker {
 
   static #regex;
 
-  static findLinks(text) {
-    // Regex can be tested and verified at https://regex101.com/r/rXoLiT/2.
-    this.#regex ??=
-      /\b(?:https?:\/\/|mailto:|www\.)(?:[\S--[\p{P}<>]]|\/|[\S--[\[\]]]+[\S--[\p{P}<>]])+|\b[\S--[@\p{Ps}\p{Pe}<>]]+@([\S--[\p{P}<>]]+(?:\.[\S--[\p{P}<>]]+)+)/gmv;
+  static #numericTLDRegex;
 
-    const [normalizedText, diffs] = normalize(text);
+  static findLinks(text) {
+    // Regex can be tested and verified at https://regex101.com/r/riHjvK/1.
+    // The email parts are bounded to keep the scan linear: a local part can't
+    // exceed 64 characters (RFC 5321, section 4.5.3.1.1) and a domain label
+    // can't exceed 63 (RFC 1035, section 2.3.4).
+    this.#regex ??=
+      // eslint-disable-next-line regexp/no-super-linear-backtracking
+      /\b(?:https?:\/\/|mailto:|www\.)(?:[\S--[\p{P}<>]]|\/|[\S--[\[\]]]+[\S--[\p{P}<>]])+|(?=\p{L})[\S--[@\p{Ps}\p{Pe}<>]]{1,64}@([\S--[[\p{P}--\-]<>]]{1,63}(?:\.[\S--[[\p{P}--\-]<>]]{1,63})+)/gv;
+
+    const [normalizedText, diffs] = normalize(text, { ignoreDashEOL: true });
     const matches = normalizedText.matchAll(this.#regex);
     const links = [];
     for (const match of matches) {
@@ -150,11 +156,19 @@ class Autolinker {
         url.startsWith("https://")
       ) {
         raw = url;
-      } else if (URL.canParse(`http://${emailDomain}`)) {
-        raw = url.startsWith("mailto:") ? url : `mailto:${url}`;
-      } else {
-        continue;
+      } else if (emailDomain) {
+        const hostname = URL.parse(`http://${emailDomain}`)?.hostname;
+        if (!hostname) {
+          continue;
+        }
+        this.#numericTLDRegex ??= /\.\d+$/;
+        if (this.#numericTLDRegex.test(hostname)) {
+          // Skip emails with a numeric TLD as domain.
+          continue;
+        }
       }
+      raw ??= url.startsWith("mailto:") ? url : `mailto:${url}`;
+
       const absoluteURL = createValidAbsoluteUrl(raw, null, {
         addDefaultProtocol: true,
       });

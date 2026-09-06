@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-/** @typedef {import("./interfaces").IL10n} IL10n */
-
 import { FeatureTest, fetchData } from "pdfjs-lib";
 import { FluentBundle, FluentResource } from "fluent-bundle";
 import { DOMLocalization } from "fluent-dom";
@@ -49,9 +47,6 @@ function createBundle(lang, text) {
   return bundle;
 }
 
-/**
- * @implements {IL10n}
- */
 class GenericL10n extends L10n {
   constructor(lang) {
     super({ lang });
@@ -71,9 +66,9 @@ class GenericL10n extends L10n {
 
   /**
    * Generate the bundles for Fluent.
-   * @param {String} defaultLang - The fallback language to use for
+   * @param {string} defaultLang - The fallback language to use for
    *   translations.
-   * @param {String} baseLang - The base language to use for translations.
+   * @param {string} baseLang - The base language to use for translations.
    */
   static async *#generateBundles(defaultLang, baseLang) {
     const { baseURL, paths } = await this.#getPaths();

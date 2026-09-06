@@ -89,24 +89,12 @@ pdfjs-document-properties-button =
 pdfjs-document-properties-button-label = Dokumenta iestatījumi…
 pdfjs-document-properties-file-name = Faila nosaukums:
 pdfjs-document-properties-file-size = Faila izmērs:
-# Variables:
-#   $size_kb (Number) - the PDF file size in kilobytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-kb = { $size_kb } KB ({ $size_b } biti)
-# Variables:
-#   $size_mb (Number) - the PDF file size in megabytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-mb = { $size_mb } MB ({ $size_b } biti)
 pdfjs-document-properties-title = Nosaukums:
 pdfjs-document-properties-author = Autors:
 pdfjs-document-properties-subject = Tēma:
 pdfjs-document-properties-keywords = Atslēgas vārdi:
 pdfjs-document-properties-creation-date = Izveides datums:
 pdfjs-document-properties-modification-date = LAbošanas datums:
-# Variables:
-#   $date (Date) - the creation/modification date of the PDF file
-#   $time (Time) - the creation/modification time of the PDF file
-pdfjs-document-properties-date-string = { $date }, { $time }
 pdfjs-document-properties-creator = Radītājs:
 pdfjs-document-properties-producer = PDF producents:
 pdfjs-document-properties-version = PDF versija:
@@ -139,6 +127,7 @@ pdfjs-document-properties-linearized = Ātrā tīmekļa skats:
 pdfjs-document-properties-linearized-yes = Jā
 pdfjs-document-properties-linearized-no = Nē
 pdfjs-document-properties-close-button = Aizvērt
+pdfjs-digital-signature-properties-view-certificate = Apskatīt sertifikātu
 
 ## Print
 
@@ -182,20 +171,21 @@ pdfjs-thumb-page-canvas =
 ## Find panel button title and messages
 
 pdfjs-find-input =
-    .title = Meklēt
     .placeholder = Meklēt dokumentā…
+    .title = Meklēt
 pdfjs-find-previous-button =
     .title = Atrast iepriekšējo
 pdfjs-find-previous-button-label = Iepriekšējā
 pdfjs-find-next-button =
     .title = Atrast nākamo
 pdfjs-find-next-button-label = Nākamā
-pdfjs-find-highlight-checkbox = Iekrāsot visas
-pdfjs-find-match-case-checkbox-label = Lielo, mazo burtu jutīgs
+pdfjs-find-highlight-checkbox = Izcelt visus
+pdfjs-find-match-case-checkbox-label = Lielo un mazo burtu atbilstība
+pdfjs-find-match-diacritics-checkbox-label = Diakritisko zīmju atbilstība
 pdfjs-find-entire-word-checkbox-label = Veselus vārdus
 pdfjs-find-reached-top = Sasniegts dokumenta sākums, turpinām no beigām
 pdfjs-find-reached-bottom = Sasniegtas dokumenta beigas, turpinām no sākuma
-pdfjs-find-not-found = Frāze nav atrasta
+pdfjs-find-not-found = Vārdkopa nav atrasta
 
 ## Predefined zoom values
 
@@ -207,14 +197,11 @@ pdfjs-page-scale-actual = Patiesais izmērs
 #   $scale (Number) - percent value for page scale
 pdfjs-page-scale-percent = { $scale }%
 
-## PDF page
-
-
 ## Loading indicator messages
 
 pdfjs-loading-error = Ielādējot PDF notika kļūda.
-pdfjs-invalid-file-error = Nederīgs vai bojāts PDF fails.
-pdfjs-missing-file-error = PDF fails nav atrasts.
+pdfjs-invalid-file-error = Nederīga vai bojāt PDF datne.
+pdfjs-missing-file-error = PDF datne nav atrasta.
 pdfjs-unexpected-response-error = Negaidīa servera atbilde.
 pdfjs-rendering-error = Attēlojot lapu radās kļūda
 
@@ -238,60 +225,52 @@ pdfjs-web-fonts-disabled = Tīmekļa fonti nav aktivizēti: Nevar iegult PDF fon
 
 ## Editing
 
-
-## Default editor aria labels
-
-
-## Remove button for the various kind of editor.
-
+pdfjs-editor-stamp-button =
+    .title = Pievienot vai labot attēlus
+pdfjs-editor-stamp-button-label = Pievienot vai labot attēlus
+pdfjs-editor-signature-button =
+    .title = Pievienot parakstu
+pdfjs-editor-signature-button-label = Pievienot parakstu
 
 ##
 
+pdfjs-editor-stamp-add-image-button =
+    .title = Pievienot attēlu
+pdfjs-editor-stamp-add-image-button-label = Pievienot attēlu
+pdfjs-editor-signature-add-signature-button =
+    .title = Pievienot jaunu parakstu
+pdfjs-editor-signature-add-signature-button-label = Pievienot jaunu parakstu
 
 ## Alt-text dialog
 
-
-## Editor resizers
-## This is used in an aria label to help to understand the role of the resizer.
-
-
-## Color picker
-
-
-## Show all highlights
-## This is a toggle button to show/hide all the highlights.
-
-
-## New alt-text dialog
-## Group note for entire feature: Alternative text (alt text) helps when people can't see the image. This feature includes a tool to create alt text automatically using an AI model that works locally on the user's device to preserve privacy.
-
-
-## Image alt-text settings
-
-
-## "Annotations removed" bar
-
+pdfjs-editor-alt-text-add-description-label = Pievienot aprakstu
 
 ## Add a signature dialog
 
-
-## Tab names
-
-
-## Tab panels
-
-
-## Controls
-
+pdfjs-editor-add-signature-dialog-title = Pievienot parakstu
 
 ## Dialog buttons
 
+pdfjs-editor-add-signature-add-button = Pievienot
 
-## Main menu for adding/removing signatures
+##  Edit a comment dialog
 
+# No existing comment
+pdfjs-editor-edit-comment-dialog-title-when-adding = Pievienot piebildi
+pdfjs-editor-edit-comment-dialog-save-button-when-adding = Pievienot
 
-## Editor toolbar
+## Edit a comment button in the editor toolbar
 
+pdfjs-editor-add-comment-button =
+    .title = Pievienot piebildi
 
-## Edit signature description dialog
+## The view manager is a sidebar displaying different views:
+##  - thumbnails;
+##  - outline;
+##  - attachments;
+##  - layers.
+## The thumbnails view is used to edit the pdf: remove/insert pages, ...
 
+pdfjs-views-manager-add-file-button =
+    .title = Pievienot datni
+pdfjs-views-manager-add-file-button-label = Pievienot datni

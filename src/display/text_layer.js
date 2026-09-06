@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-/** @typedef {import("./display_utils").PageViewport} PageViewport */
+/** @typedef {import("./page_viewport").PageViewport} PageViewport */
 /** @typedef {import("./api").TextContent} TextContent */
+/** @typedef {import("./text_layer_images").TextLayerImages} TextLayerImages */
 
 import {
   AbortException,
@@ -26,7 +27,7 @@ import {
 import { OutputScale, setLayerDimensions } from "./display_utils.js";
 
 /**
- * @typedef {Object} TextLayerParameters
+ * @typedef {object} TextLayerParameters
  * @property {ReadableStream | TextContent} textContentSource - Text content to
  *   render, i.e. the value returned by the page's `streamTextContent` or
  *   `getTextContent` method.
@@ -34,13 +35,15 @@ import { OutputScale, setLayerDimensions } from "./display_utils.js";
  *   runs.
  * @property {PageViewport} viewport - The target viewport to properly layout
  *   the text runs.
+ * @property {TextLayerImages} [images] - An optional TextLayerImages instance
+ *  that handles right clicking on images.
  */
 
 /**
- * @typedef {Object} TextLayerUpdateParameters
+ * @typedef {object} TextLayerUpdateParameters
  * @property {PageViewport} viewport - The target viewport to properly layout
  *   the text runs.
- * @property {function} [onBefore] - Callback invoked before the textLayer is
+ * @property {Function} [onBefore] - Callback invoked before the textLayer is
  *   updated in the DOM.
  */
 
@@ -56,6 +59,8 @@ class TextLayer {
 
   #fontInspectorEnabled = !!globalThis.FontInspector?.enabled;
 
+  #imagesHandler = null;
+
   #lang = null;
 
   #layoutTextParams = null;
@@ -63,6 +68,8 @@ class TextLayer {
   #pageHeight = 0;
 
   #pageWidth = 0;
+
+  #pixelRatio = OutputScale.pixelRatio;
 
   #reader = null;
 
@@ -97,7 +104,7 @@ class TextLayer {
   /**
    * @param {TextLayerParameters} options
    */
-  constructor({ textContentSource, container, viewport }) {
+  constructor({ textContentSource, images, container, viewport }) {
     if (textContentSource instanceof ReadableStream) {
       this.#textContentSource = textContentSource;
     } else if (
@@ -115,7 +122,9 @@ class TextLayer {
     }
     this.#container = this.#rootContainer = container;
 
-    this.#scale = viewport.scale * OutputScale.pixelRatio;
+    this.#imagesHandler = images;
+
+    this.#scale = viewport.scale * this.#pixelRatio;
     this.#rotation = viewport.rotation;
     this.#layoutTextParams = {
       div: null,
@@ -128,6 +137,7 @@ class TextLayer {
     this.#pageHeight = pageHeight;
 
     TextLayer.#ensureMinFontSizeComputed();
+    container.style.setProperty("--min-font-size", TextLayer.#minFontSize);
 
     setLayerDimensions(container, viewport);
 
@@ -180,6 +190,10 @@ class TextLayer {
    * @returns {Promise}
    */
   render() {
+    if (this.#imagesHandler) {
+      this.#container.append(this.#imagesHandler.render());
+    }
+
     const pump = () => {
       this.#reader.read().then(({ value, done }) => {
         if (done) {
@@ -217,6 +231,7 @@ class TextLayer {
     if (scale !== this.#scale) {
       onBefore?.();
       this.#scale = scale;
+      this.#pixelRatio = OutputScale.pixelRatio;
       const params = {
         div: null,
         properties: null,
@@ -290,8 +305,11 @@ class TextLayer {
           const parent = this.#container;
           this.#container = document.createElement("span");
           this.#container.classList.add("markedContent");
-          if (item.id !== null) {
-            this.#container.setAttribute("id", `${item.id}`);
+          if (item.id) {
+            this.#container.setAttribute("id", item.id);
+          }
+          if (item.tag === "Artifact") {
+            this.#container.ariaHidden = true;
           }
           parent.append(this.#container);
         } else if (item.type === "endMarkedContent") {
@@ -342,26 +360,18 @@ class TextLayer {
       top = tx[5] - fontAscent * Math.cos(angle);
     }
 
-    const scaleFactorStr = "calc(var(--total-scale-factor) *";
     const divStyle = textDiv.style;
     // Setting the style properties individually, rather than all at once,
     // should be OK since the `textDiv` isn't appended to the document yet.
-    if (this.#container === this.#rootContainer) {
-      divStyle.left = `${((100 * left) / this.#pageWidth).toFixed(2)}%`;
-      divStyle.top = `${((100 * top) / this.#pageHeight).toFixed(2)}%`;
-    } else {
-      // We're in a marked content span, hence we can't use percents.
-      divStyle.left = `${scaleFactorStr}${left.toFixed(2)}px)`;
-      divStyle.top = `${scaleFactorStr}${top.toFixed(2)}px)`;
-    }
-    // We multiply the font size by #minFontSize, and then #layout will
-    // scale the element by 1/#minFontSize. This allows us to effectively
-    // ignore the minimum font size enforced by the browser, so that the text
-    // layer <span>s can always match the size of the text in the canvas.
-    divStyle.fontSize = `${scaleFactorStr}${(TextLayer.#minFontSize * fontHeight).toFixed(2)}px)`;
+    divStyle.left = `${((100 * left) / this.#pageWidth).toFixed(2)}%`;
+    divStyle.top = `${((100 * top) / this.#pageHeight).toFixed(2)}%`;
+    // The text is laid out with the rounded value, hence keep it around in
+    // order to measure the text with the very same size, see `#layout`.
+    const roundedFontHeight = Math.round(fontHeight * 100) / 100;
+    divStyle.setProperty("--font-height", `${roundedFontHeight}px`);
     divStyle.fontFamily = fontFamily;
 
-    textDivProperties.fontSize = fontHeight;
+    textDivProperties.fontSize = roundedFontHeight;
 
     // Keeps screen readers from pausing on every new text span.
     textDiv.setAttribute("role", "presentation");
@@ -420,29 +430,30 @@ class TextLayer {
   #layout(params) {
     const { div, properties, ctx } = params;
     const { style } = div;
+    const { canvasWidth, fontSize } = properties;
 
-    let transform = "";
-    if (TextLayer.#minFontSize > 1) {
-      transform = `scale(${1 / TextLayer.#minFontSize})`;
-    }
-
-    if (properties.canvasWidth !== 0 && properties.hasText) {
+    if (canvasWidth !== 0 && fontSize !== 0 && properties.hasText) {
       const { fontFamily } = style;
-      const { canvasWidth, fontSize } = properties;
+      // Firefox quantizes canvas font sizes after dividing by the device-pixel
+      // ratio. Measure at a quantized size, then rescale the width.
+      const pixelRatio = this.#pixelRatio;
+      const measuredSize =
+        TextLayer.#quantizeFontSize((fontSize * this.#scale) / pixelRatio) *
+        pixelRatio;
 
-      TextLayer.#ensureCtxFont(ctx, fontSize * this.#scale, fontFamily);
+      TextLayer.#ensureCtxFont(ctx, measuredSize, fontFamily);
       // Only measure the width for multi-char text divs, see `appendText`.
       const { width } = ctx.measureText(div.textContent);
 
       if (width > 0) {
-        transform = `scaleX(${(canvasWidth * this.#scale) / width}) ${transform}`;
+        style.setProperty(
+          "--scale-x",
+          (canvasWidth * measuredSize) / (width * fontSize)
+        );
       }
     }
     if (properties.angle !== 0) {
-      transform = `rotate(${properties.angle}deg) ${transform}`;
-    }
-    if (transform.length > 0) {
-      style.transform = transform;
+      style.setProperty("--rotate", `${properties.angle}deg`);
     }
   }
 
@@ -476,7 +487,9 @@ class TextLayer {
       // their replacements when they aren't embedded) and then we can use an
       // OffscreenCanvas.
       const canvas = document.createElement("canvas");
-      canvas.className = "hiddenCanvasElement";
+      canvas.style.cssText =
+        "position:absolute;top:0;left:0;width:0;height:0;display:none;" +
+        "letter-spacing:normal;word-spacing:normal";
       canvas.lang = lang;
       document.body.append(canvas);
       ctx = canvas.getContext("2d", {
@@ -489,6 +502,14 @@ class TextLayer {
       this.#canvasCtxFonts.set(ctx, { size: 0, family: "" });
     }
     return ctx;
+  }
+
+  // Match Firefox's 7-bit `QuantizeFontSize` implementation:
+  // https://searchfox.org/firefox-main/rev/04b29f9c2d2dbf5639c3f45ea812bb4c21dc81c6/dom/canvas/CanvasRenderingContext2D.cpp#4205-4215
+  static #quantizeFontSize(size) {
+    size = Math.fround(size);
+    const d = Math.fround(size * ((1 << 17) + 1));
+    return Math.fround(d - Math.fround(d - size));
   }
 
   static #ensureCtxFont(ctx, size, family) {
