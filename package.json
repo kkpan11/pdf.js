@@ -4,7 +4,6 @@
   "devDependencies": {
     "@babel/core": "^8.0.1",
     "@babel/preset-env": "^8.0.2",
-    "@babel/runtime": "^8.0.0",
     "@eslint/json": "^2.0.1",
     "@fluent/bundle": "^0.19.1",
     "@fluent/dom": "^0.10.2",
