@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { kleur } from "../external/color_utils.mjs";
+import { colorize } from "../external/color_utils.mjs";
 
-const TEST_PASSED = kleur.green("TEST-PASS");
-const TEST_UNEXPECTED_FAIL = kleur.red().bold("TEST-UNEXPECTED-FAIL");
+const TEST_PASSED = colorize("green", "TEST-PASS");
+const TEST_UNEXPECTED_FAIL = colorize(["red", "bold"], "TEST-UNEXPECTED-FAIL");
 
 function colorBrowser(name) {
-  return kleur.cyan(name);
+  return colorize("cyan", name);
 }
 
 export { colorBrowser, TEST_PASSED, TEST_UNEXPECTED_FAIL };
