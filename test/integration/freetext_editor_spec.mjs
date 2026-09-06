@@ -22,6 +22,7 @@ import {
   countSerialized,
   countStorageEntries,
   createPromise,
+  decodePNG,
   dragAndDrop,
   firstPageOnTop,
   getAnnotationSelector,
@@ -61,7 +62,6 @@ import {
   waitForTimeout,
   waitForUnselectedEditor,
 } from "./test_utils.mjs";
-import { PNG } from "pngjs";
 
 const selectAll = selectEditors.bind(null, "freeText");
 
@@ -1582,7 +1582,7 @@ describe("FreeText Editor", () => {
               clip: rect,
               type: "png",
             });
-            const editorImage = PNG.sync.read(Buffer.from(editorPng));
+            const editorImage = await decodePNG(editorPng);
             const editorFirstPix = getFirstPixel(
               editorImage.data,
               editorImage.width,
@@ -1610,7 +1610,7 @@ describe("FreeText Editor", () => {
               clip: rect,
               type: "png",
             });
-            const editorImage = PNG.sync.read(Buffer.from(editorPng));
+            const editorImage = await decodePNG(editorPng);
             const editorFirstPix = getFirstPixel(
               editorImage.data,
               editorImage.width,
@@ -1743,7 +1743,7 @@ describe("FreeText Editor", () => {
               clip: rect,
               type: "png",
             });
-            const editorImage = PNG.sync.read(Buffer.from(editorPng));
+            const editorImage = await decodePNG(editorPng);
             const editorFirstPix = getFirstPixel(
               editorImage.data,
               editorImage.width,
@@ -1777,7 +1777,7 @@ describe("FreeText Editor", () => {
               clip: rect,
               type: "png",
             });
-            const editorImage = PNG.sync.read(Buffer.from(editorPng));
+            const editorImage = await decodePNG(editorPng);
             const editorFirstPix = getFirstPixel(
               editorImage.data,
               editorImage.width,
