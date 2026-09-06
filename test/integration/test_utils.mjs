@@ -417,6 +417,7 @@ async function selectEditor(page, selector, count = 1) {
     { count }
   );
   await waitForSelectedEditor(page, selector);
+  await waitForEditorFocusSettled(page);
 }
 
 async function waitForSelectedEditor(page, selector) {
@@ -725,6 +726,20 @@ function waitForEditorMovedInDOM(page) {
       once: true,
     });
   });
+}
+
+/**
+ * Editor operations can queue zero-delay timers to move an editor in the DOM
+ * and then restore its focus. A tool change can also queue a timer to focus its
+ * selected editor. Wait through both timer turns before sending more input.
+ */
+function waitForEditorFocusSettled(page) {
+  return page.evaluate(
+    () =>
+      new Promise(resolve => {
+        setTimeout(() => setTimeout(resolve, 0), 0);
+      })
+  );
 }
 
 async function scrollIntoView(page, selector) {
@@ -1098,11 +1113,14 @@ function waitForPositionChange(page, selector, xy) {
 }
 
 async function moveEditor(page, selector, n, pressKey) {
+  await waitForEditorFocusSettled(page);
   let xy = await getXY(page, selector);
   for (let i = 0; i < n; i++) {
     const handle = await waitForEditorMovedInDOM(page);
     await pressKey();
     await awaitPromise(handle);
+    // `editormovedindom` is dispatched before focus is restored.
+    await waitForEditorFocusSettled(page);
     await waitForPositionChange(page, selector, xy);
     xy = await getXY(page, selector);
   }
@@ -1253,6 +1271,7 @@ export {
   waitForAnnotationModeChanged,
   waitForBrowserTrip,
   waitForDOMMutation,
+  waitForEditorFocusSettled,
   waitForEntryInStorage,
   waitForEvent,
   waitForNoElement,
