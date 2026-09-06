@@ -1812,21 +1812,19 @@ describe("Highlight Editor", () => {
         pages.map(async ([browserName, page]) => {
           await switchToHighlight(page);
 
-          const rect = await getSpanRectFromText(
-            page,
-            1,
-            "ternative compilation technique for dynamically-typed languages"
-          );
+          const text =
+            "ternative compilation technique for dynamically-typed languages";
+          // A triple-click can create highlights on both its second and third
+          // clicks.
+          await highlightSpan(page, 1, text);
           const editorSelector = getEditorSelector(0);
-          const x = Math.round(rect.x + rect.width / 2);
-          let y = Math.round(rect.y + rect.height / 2);
-          await page.mouse.click(x, y, { count: 3, delay: 100 });
-          await page.waitForSelector(editorSelector);
           await waitForSerialized(page, 1);
           await unselectEditor(page, editorSelector);
 
           const clickHandle = await waitForPointerUp(page);
-          y = rect.y - 3 * rect.height;
+          const rect = await getSpanRectFromText(page, 1, text);
+          const x = Math.round(rect.x + rect.width / 2);
+          let y = rect.y - 3 * rect.height;
           await page.mouse.move(x, y);
 
           const counterHandle = await page.evaluateHandle(sel => {

@@ -35,6 +35,7 @@ import {
   waitForBrowserTrip,
   waitForSerialized,
   waitForTimeout,
+  waitForTooltipToBe,
 } from "./test_utils.mjs";
 
 const switchToHighlight = switchToEditor.bind(null, "Highlight");
@@ -275,11 +276,7 @@ describe("Comment", () => {
 
           let commentButtonSelector = `${getEditorSelector(0)} button.comment`;
           await page.waitForSelector(commentButtonSelector, { visible: true });
-          let title = await page.evaluate(
-            selector => document.querySelector(selector).title,
-            commentButtonSelector
-          );
-          expect(title).withContext(`In ${browserName}`).toEqual("Add comment");
+          await waitForTooltipToBe(page, commentButtonSelector, "Add comment");
           await page.click(commentButtonSelector);
 
           const textInputSelector = "#commentManagerTextInput";
@@ -294,13 +291,7 @@ describe("Comment", () => {
           await page.waitForSelector(commentButtonSelector, {
             visible: true,
           });
-          title = await page.evaluate(selector => {
-            const button = document.querySelector(selector);
-            return button.title;
-          }, commentButtonSelector);
-          expect(title)
-            .withContext(`In ${browserName}`)
-            .toEqual("Show comment");
+          await waitForTooltipToBe(page, commentButtonSelector, "Show comment");
         })
       );
     });

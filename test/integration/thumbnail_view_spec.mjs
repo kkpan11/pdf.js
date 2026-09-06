@@ -22,6 +22,7 @@ import {
   loadAndWait,
   PDI,
   showViewsManager,
+  waitForTooltipToBe,
 } from "./test_utils.mjs";
 
 function waitForThumbnailVisible(page, pageNum) {
@@ -70,13 +71,11 @@ describe("PDF Thumbnail View", () => {
             visible: true,
           });
 
-          const title = await page.$eval(
+          await waitForTooltipToBe(
+            page,
             getThumbnailSelector(1),
-            el => el.title
+            `Page ${FSI}1${PDI} of ${FSI}14${PDI}`
           );
-          expect(title)
-            .withContext(`In ${browserName}`)
-            .toBe(`Page ${FSI}1${PDI} of ${FSI}14${PDI}`);
         })
       );
     });
@@ -426,13 +425,11 @@ describe("PDF Thumbnail View", () => {
           await showViewsManager(page);
           await waitForThumbnailVisible(page, 1);
 
-          const title = await page.$eval(
+          await waitForTooltipToBe(
+            page,
             `.thumbnail[page-number="1"] input[type="checkbox"]`,
-            el => el.title
+            `Select page ${FSI}1${PDI}`
           );
-          expect(title)
-            .withContext(`In ${browserName}`)
-            .toBe(`Select page ${FSI}1${PDI}`);
         })
       );
     });
