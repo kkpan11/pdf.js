@@ -13,8 +13,14 @@
  * limitations under the License.
  */
 
+import {
+  BBOX_INIT,
+  FormatError,
+  info,
+  unreachable,
+  Util,
+} from "../shared/util.js";
 import { drawMeshWithGPU, isGPUReady, loadMeshShader } from "./webgpu.js";
-import { FormatError, info, unreachable, Util } from "../shared/util.js";
 import { CanvasNestedDependencyTracker } from "./canvas_dependency_tracker.js";
 import { getCurrentTransform } from "./display_utils.js";
 
@@ -597,7 +603,7 @@ class TilingPattern {
   // as [width, height, offsetX, offsetY] in dims.
   updatePatternDims(clippedBBox, dims) {
     // Two diagonal corners aren't enough when the pattern matrix is rotated.
-    const bbox = [Infinity, Infinity, -Infinity, -Infinity];
+    const bbox = BBOX_INIT.slice();
     Util.axialAlignedBoundingBox(
       clippedBBox,
       Util.inverseTransform(this.patternBaseMatrix),
